@@ -122,6 +122,7 @@ class Swift:
         rate: int = 60,
         browser: Union[str, None] = None,
         comms: L["websocket", "rtc"] = "websocket",
+        no_browser: bool = False,
         **kwargs,
     ):
         """
@@ -150,6 +151,9 @@ class Swift:
             instances.  Can be either 'websocket' or 'rtc' (WebRTC).  The
             default is 'websocket'. The 'rtc' option requires a browser that
             supports WebRTC, such as Chrome or Firefox.
+        no_browser
+            It starts the http and ws server but doesn't open tab so user can
+            take advantage of using the url inside an application ro visualize.
 
         """
 
@@ -157,13 +161,14 @@ class Swift:
         self.rate = rate
         self.realtime = realtime
         self.headless = headless
+        self.no_browser = no_browser
 
         if comms == "rtc":
             self._comms = "rtc"
         else:
             self._comms = "websocket"
 
-        if not self.headless:
+        if not self.headless and not self.no_browser:
             # The realtime, render and pause buttons
             self._add_controls()
 
@@ -173,7 +178,23 @@ class Swift:
                 self.outq,
                 self.inq,
                 self._servers_running,
-                browser=browser,
+                browser=self.browser,
+                comms=self._comms,
+            )
+            self.last_time = time.time()
+        
+        if no_browser:
+            # The realtime, render and pause buttons
+            self._add_controls()
+
+            # A flag for our threads to monitor for when to quit
+            self._run_thread = True
+            self.socket, self.server = start_servers(
+                self.outq,
+                self.inq,
+                self._servers_running,
+                browser=self.browser,
+                open_tab=False,
                 comms=self._comms,
             )
             self.last_time = time.time()
